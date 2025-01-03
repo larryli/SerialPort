@@ -6,4 +6,5 @@
 #define ID_CONNECT 4002
 #define ID_OUT 4003
 #define ID_IN 4004
-#define ID_SEND 4005
+#define ID_CLEAR 4005
+#define ID_SEND 4006

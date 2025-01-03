@@ -46,7 +46,7 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 
     wcx.hInstance = hInstance;
     wcx.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDR_ICO_MAIN));
-    wcx.lpszClassName = TEXT("SerialPortClass");
+    wcx.lpszClassName = TEXT("SerialPortDemoClass");
     if (!RegisterClassEx(&wcx))
         return 0;
 
@@ -202,6 +202,28 @@ static void Disconnect(HWND hwnd)
     Button_Enable(GetDlgItem(hwnd, ID_SEND), FALSE);
 }
 
+static void SendData(HWND hwnd, HWND hwndEdit)
+{
+    DWORD dwSize = Edit_GetTextLength(hwndEdit) + 1;
+    if (dwSize < 1) {
+        return;
+    }
+    LPTSTR lpszStr = (LPTSTR)malloc(dwSize * sizeof(TCHAR));
+    if (lpszStr == NULL) {
+        MessageBox(hwnd, TEXT("malloc failed!"), NULL, MB_OK | MB_ICONERROR);
+        return;
+    }
+    Edit_GetText(hwndEdit, lpszStr, dwSize);
+    SerialPort_WriteBytes(GetDlgItem(hwnd, ID_SERIAL), lpszStr, dwSize);
+    free(lpszStr);
+}
+
+static void ClearOut(HWND hwndEdit)
+{
+    Edit_SetSel(hwndEdit, 0, -1);
+    Edit_ReplaceSel(hwndEdit, TEXT(""));
+}
+
 static void MainDlg_OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
 {
     switch (id) {
@@ -217,6 +239,12 @@ static void MainDlg_OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
         } else {
             Connect(hwnd);
         }
+        break;
+    case ID_SEND:
+        SendData(hwnd, GetDlgItem(hwnd, ID_IN));
+        break;
+    case ID_CLEAR:
+        ClearOut(GetDlgItem(hwnd, ID_OUT));
         break;
     case IDOK:
     case IDCANCEL:
@@ -277,7 +305,9 @@ static LRESULT MainDlg_OnNotify(HWND hwnd, INT id, LPNMHDR pnm)
         PBYTE pByte = malloc(dwCount);
         if (pByte != NULL) {
             if (SerialPort_ReadBytes(pnm->hwndFrom, pByte, dwCount)) {
-                // @todo:
+                HWND hwndEdit = GetDlgItem(hwnd, ID_OUT);
+                Edit_SetSel(hwndEdit, -1, -1);
+                Edit_ReplaceSel(hwndEdit, pByte);
             }
             free(pByte);
         }
