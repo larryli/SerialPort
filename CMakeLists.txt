@@ -7,4 +7,7 @@ if(MSVC)
 endif()
 
 add_library(SerialPort SerialPort.c)
-target_link_libraries(SerialPort comctl32 comdlg32)
+
+include_directories(.)
+add_executable(SerialPortDemo WIN32 SerialPort.c demo/main.c demo/main.rc)
+target_link_libraries(SerialPortDemo comctl32 comdlg32)
