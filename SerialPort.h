@@ -44,6 +44,7 @@
 #define SPM_FLUSH WM_USER + 0x19
 #define SPM_SETRXTHRESHOLD WM_USER + 0x1A
 #define SPM_GETRXTHRESHOLD WM_USER + 0x1B
+#define SPM_GETPORTSEX WM_USER + 0x1C
 
 /****************************************************************************/
 // Public Enums
@@ -55,7 +56,7 @@ typedef enum tagFlowControl {
     DsrRtsFlowControl,
     DsrDtrFlowControl,
     XonXoffFlowControl
-} FLOWCONTROL;
+} SPFLOWCONTROL;
 
 /****************************************************************************/
 // Public Structs
@@ -69,8 +70,23 @@ typedef struct tagConfig {
     BYTE bDataBits;
     BYTE bStopBits;
     BOOL fDiscardNull;
-    FLOWCONTROL flowControl;
-} CONFIG, *LPCONFIG;
+    SPFLOWCONTROL flowControl;
+} SPCONFIG, *LPSPCONFIG;
+
+typedef struct tagPortEx {
+    LPTSTR pszPortName;
+    BOOL bPresent;
+    DWORD dwVendorId;
+    DWORD dwProductId;
+    LPTSTR pszFriendlyName;
+} SPPORTEX, *LPSPPORTEX;
+
+typedef struct tagPortExParams {
+    UINT mask;
+    BOOL bPresent;
+    DWORD dwVendorId;
+    DWORD dwProductId;
+} SPPORTEXPARAMS, *LPSPPORTEXPARAMS;
 
 // Mask values
 #define SPCF_PORTNAME 0x0001
@@ -85,17 +101,26 @@ typedef struct tagConfig {
     SPCF_PORTNAME | SPCF_BAUDRATE | SPCF_PARITY | SPCF_DATABITS |              \
         SPCF_STOPBITS | SPCF_NULLDISCARD | SPCF_FLOWCONT
 
+#define SPPF_PRESENT 0x0001
+#define SPPF_VENDORID 0x0002
+#define SPPF_PRODUCTID 0x0004
+
 /****************************************************************************/
 // Notifications
 
 typedef struct tagNMSERIAL {
     NMHDR hdr;
     DWORD dwCode;
-} NMSERIAL, *LPNMSERIAL;
+} SPNMSERIAL, *LPSPNMSERIAL;
 
 #define SPN_DATARECEIVED WM_USER + 0x2A
 #define SPN_PINCHANGED WM_USER + 0x2B
 #define SPN_ERRORRECEIVED WM_USER + 0x2C
+
+#ifndef HANDLE_WM_DEVICECHANGE
+#define HANDLE_WM_DEVICECHANGE(hwnd, wParam, lParam, fn)                       \
+    (LRESULT)(DWORD)(BOOL)(fn)((hwnd), (UINT)(wParam), (DWORD)(lParam))
+#endif
 
 /****************************************************************************/
 // Macroes
@@ -144,6 +169,9 @@ typedef struct tagNMSERIAL {
     (BOOL) SNDMSG((hwnd), SPM_SETRXTHRESHOLD, (WPARAM)(dwNumBytes), (LPARAM)0L)
 #define SerialPort_GetReceiveByteThreshold(hwnd)                               \
     (DWORD) SNDMSG((hwnd), SPM_GETRXTHRESHOLD, (WPARAM)0, (LPARAM)0L)
+#define SerialPort_GetPortsEx(hwnd, lpExParams, lpCount)                       \
+    (LPSPPORTEX *)SNDMSG((hwnd), SPM_GETPORTSEX, (WPARAM)(lpCount),            \
+                         (LPARAM)(lpExParams))
 
 /****************************************************************************/
 // Prototypes
