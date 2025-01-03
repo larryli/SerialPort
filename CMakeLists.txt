@@ -9,5 +9,5 @@ endif()
 add_library(SerialPort SerialPort.c)
 
 include_directories(.)
-add_executable(SerialPortDemo WIN32 SerialPort.c demo/main.c demo/main.rc)
-target_link_libraries(SerialPortDemo comctl32 comdlg32)
+add_executable(SerialPortDemo WIN32 demo/main.c demo/main.rc)
+target_link_libraries(SerialPortDemo SerialPort comctl32 comdlg32)

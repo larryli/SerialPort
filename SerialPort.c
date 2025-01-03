@@ -384,7 +384,7 @@ BOOL GetPortsEx(LPSPPORTEX **lpPortExList, LPSPPORTEXPARAMS lpPortExParams,
     if (lpPortExParams != NULL) {
         mask = lpPortExParams->mask;
     }
-    if ((mask & SPPF_PRESENT) && lpPortExParams->bPresent) {
+    if ((mask & SPPF_PRESENT) && lpPortExParams && lpPortExParams->bPresent) {
         dwFlags |= DIGCF_PRESENT;
     }
     HDEVINFO hDevInfo = SetupDiGetClassDevs(&guidSerial, NULL, NULL, dwFlags);
