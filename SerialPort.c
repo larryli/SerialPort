@@ -1,5 +1,5 @@
 /****************************************************************************\
-*            
+*
 *     FILE:     SerialPort.c
 *
 *     PURPOSE:  SerialPort IO Wrapper
@@ -14,20 +14,23 @@
 * History:
 *                Sep '09 - Created
 *                Aug '10 - Fixed allocation bug in GetPortNames()
-*                May '11 - Several bug fixes (labled in code as follows: //May '11 ...)
+*                May '11 - Several bug fixes
+*                          (labled in code as follows: //May '11 ...)
 *
 \****************************************************************************/
-//#define UNICODE
-//#define _UNICODE
+// #define UNICODE
+// #define _UNICODE
 
 #define WIN32_LEAN_AND_MEAN
 
 #include <windows.h>
 #include <windowsx.h>
+
 #include <commctrl.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <tchar.h>
+
 #include "SerialPort.h"
 
 #define NELEMS(a) (sizeof(a) / sizeof((a)[0]))
@@ -51,8 +54,8 @@ typedef struct _tagINSTANCEDATA {
     HWND hwndParent;
     LPTSTR lpComm;
     HANDLE hComm;
-    BOOL fEndListner; //May '11 Added
-    HANDLE hListnerEvent; //May '11 Added
+    BOOL fEndListner;     // May '11 Added
+    HANDLE hListnerEvent; // May '11 Added
     HANDLE hEventThread;
     HANDLE hStartEvent;
     HANDLE hIOEvent;
@@ -61,7 +64,7 @@ typedef struct _tagINSTANCEDATA {
     LPTSTR *lpPortlist;
     DWORD dwPortCount;
     FLOWCONTROL flowControl;
-} INSTANCEDATA  , *LPINSTANCEDATA;
+} INSTANCEDATA, *LPINSTANCEDATA;
 
 LPINSTANCEDATA g_lpInst;
 
@@ -72,7 +75,8 @@ LPINSTANCEDATA g_lpInst;
 *     PURPOSE:  Get the Instance data associated with this instance.
 *
 *     PARAMS:   HWND hControl - Handle to Current instance
-*               LPINSTANCEDATA *ppInstanceData - pointer to the address of an INSTANCEDATA struct
+*               LPINSTANCEDATA *ppInstanceData - pointer to the address of an
+INSTANCEDATA struct
 *
 *     RETURNS:  BOOL - TRUE if successful
 *
@@ -81,9 +85,11 @@ LPINSTANCEDATA g_lpInst;
 *
 \****************************************************************************/
 
-static BOOL Control_GetInstanceData(HWND hControl, LPINSTANCEDATA * ppInstanceData)
+static BOOL Control_GetInstanceData(HWND hControl,
+                                    LPINSTANCEDATA *ppInstanceData)
 {
-    *ppInstanceData = (LPINSTANCEDATA)GetProp(hControl, (LPCTSTR) _T("lpInsData"));
+    *ppInstanceData =
+        (LPINSTANCEDATA)GetProp(hControl, (LPCTSTR) _T("lpInsData"));
     if (NULL != *ppInstanceData)
         return TRUE;
     return FALSE;
@@ -105,23 +111,25 @@ static BOOL Control_GetInstanceData(HWND hControl, LPINSTANCEDATA * ppInstanceDa
 *
 \****************************************************************************/
 
-static BOOL Control_CreateInstanceData(HWND hControl, LPINSTANCEDATA pInstanceData)
+static BOOL Control_CreateInstanceData(HWND hControl,
+                                       LPINSTANCEDATA pInstanceData)
 {
     LPINSTANCEDATA pInst = (LPINSTANCEDATA)malloc(sizeof(INSTANCEDATA));
 
-    if(NULL == pInst)
+    if (NULL == pInst)
         return FALSE;
 
     memmove(pInst, pInstanceData, sizeof(INSTANCEDATA));
 
-    return SetProp(hControl,(LPCTSTR) _T("lpInsData"), pInst);
+    return SetProp(hControl, (LPCTSTR) _T("lpInsData"), pInst);
 }
 
 /****************************************************************************
 *
 *     FUNCTION: Control_FreeInstanceData
 *
-*     PURPOSE:  Free the instance data allocation of an instance of the Grid Control.
+*     PURPOSE:  Free the instance data allocation of an instance of the Grid
+Control.
 *
 *     PARAMS:   HWND hControl - Handle to Current instance
 *
@@ -135,10 +143,9 @@ static BOOL Control_CreateInstanceData(HWND hControl, LPINSTANCEDATA pInstanceDa
 static BOOL Control_FreeInstanceData(HWND hControl)
 {
     LPINSTANCEDATA pInst;
-    if (Control_GetInstanceData(hControl, &pInst))
-    {
+    if (Control_GetInstanceData(hControl, &pInst)) {
         free((LPINSTANCEDATA)pInst);
-        RemoveProp(hControl,(LPCTSTR) _T("lpInsData"));
+        RemoveProp(hControl, (LPCTSTR) _T("lpInsData"));
         return TRUE;
     }
     return FALSE;
@@ -168,7 +175,7 @@ static VOID SetStringBuffer(LPTSTR *lppBuf, LPTSTR value)
     _tcsncpy(*lppBuf, value, len);
 }
 
-#pragma endregion  Instance Data
+#pragma endregion Instance Data
 
 #pragma region Port Names
 
@@ -178,11 +185,14 @@ static VOID SetStringBuffer(LPTSTR *lppBuf, LPTSTR value)
 *
 *     PURPOSE:  Get a list of comm ports available on host workstation.
 *
-*     PARAMS:   LPTSTR **lpPortList - a referance pointer to receive the list of port names
-*               LPDWORD lpCount - a referance DWORD pointer to receive the list size
+*     PARAMS:   LPTSTR **lpPortList - a referance pointer to receive the list of
+port names
+*               LPDWORD lpCount - a referance DWORD pointer to receive the list
+size
 *
-*     RETURNS:  LONG - ERROR_SUCCESS if successful. If the function fails, 
-*                      the return value is a nonzero error code defined in WINERROR.H. 
+*     RETURNS:  LONG - ERROR_SUCCESS if successful. If the function fails,
+*                      the return value is a nonzero error code defined in
+WINERROR.H.
 *
 * History:
 *                Jan '08 - Created
@@ -197,48 +207,50 @@ LONG GetPortNames(LPTSTR **lpPortList, LPDWORD lpCount)
     TCHAR regValue[MAX_PATH];
     TCHAR portName[MAX_PATH];
 
-    //open the regkey where the serial port data is stored
-    res = RegOpenKeyEx(HKEY_LOCAL_MACHINE, _T("HARDWARE\\DEVICEMAP\\SERIALCOMM"), 0, KEY_READ, &hKey);
+    // open the regkey where the serial port data is stored
+    res =
+        RegOpenKeyEx(HKEY_LOCAL_MACHINE, _T("HARDWARE\\DEVICEMAP\\SERIALCOMM"),
+                     0, KEY_READ, &hKey);
     if (res != ERROR_SUCCESS)
         return res;
 
-    __try
-    {
-        //get the number of ports
-        res = RegQueryInfoKey(hKey, NULL, NULL, NULL, NULL, NULL, NULL, lpCount, NULL, NULL, NULL, NULL);
+    __try {
+        // get the number of ports
+        res = RegQueryInfoKey(hKey, NULL, NULL, NULL, NULL, NULL, NULL, lpCount,
+                              NULL, NULL, NULL, NULL);
         if (res != ERROR_SUCCESS)
             __leave;
 
-        //create array based on number of ports
+        // create array based on number of ports
         *lpPortList = (LPTSTR *)malloc((*lpCount + 1) * sizeof(PTCHAR));
-		(*lpPortList)[*lpCount] = NULL;  //May '11 So FreePortNameList() will stop at the end of the list
+        (*lpPortList)[*lpCount] = NULL; // May '11 So FreePortNameList() will
+                                        // stop at the end of the list
 
-        if(NULL == *lpPortList)
+        if (NULL == *lpPortList)
             return 0;
 
         myType = REG_SZ;
 
-        for (int port = 0, lenValue, lenName; port < *lpCount; port++)
-        {
+        for (int port = 0, lenValue, lenName; port < (int)*lpCount; port++) {
             lenValue = NELEMS(regValue);
             lenName = NELEMS(portName);
 
-            //cycle through reg values to get port names 
-            res = RegEnumValue(hKey, port, regValue, (LPDWORD) &lenValue, NULL, &myType, (LPBYTE)portName, (LPDWORD) &lenName);
+            // cycle through reg values to get port names
+            res = RegEnumValue(hKey, port, regValue, (LPDWORD)&lenValue, NULL,
+                               &myType, (LPBYTE)portName, (LPDWORD)&lenName);
             if (res != ERROR_SUCCESS)
                 __leave;
 
-            //allocate and populate an array index
-            (*lpPortList)[port] = (LPTSTR)calloc((size_t)lenName, sizeof(TCHAR));
+            // allocate and populate an array index
+            (*lpPortList)[port] =
+                (LPTSTR)calloc((size_t)lenName, sizeof(TCHAR));
 
-            if(NULL == (*lpPortList)[port])
+            if (NULL == (*lpPortList)[port])
                 continue;
 
-            _tmemmove((*lpPortList)[port], portName, lenName);
+            memmove((*lpPortList)[port], portName, lenName);
         }
-    }
-    __finally
-    {
+    } __finally {
         RegCloseKey(hKey);
     }
     return res;
@@ -259,7 +271,7 @@ LONG GetPortNames(LPTSTR **lpPortList, LPDWORD lpCount)
 *
 \****************************************************************************/
 
-VOID FreePortNameList(LPTSTR * portList)
+VOID FreePortNameList(LPTSTR *portList)
 {
     int Count = 0;
     while (portList[Count])
@@ -295,36 +307,33 @@ DWORD WINAPI Listner_Proc(LPVOID StartParam)
 
     ov.Offset = 0;
     ov.OffsetHigh = 0;
-    ov.hEvent = g_lpInst->hListnerEvent; //May '11 added
-    ResetEvent(ov.hEvent); //May '11 added
+    ov.hEvent = g_lpInst->hListnerEvent; // May '11 added
+    ResetEvent(ov.hEvent);               // May '11 added
 
-    if (INVALID_HANDLE_VALUE != g_lpInst->hComm)
-    {
-        while (!g_lpInst->fEndListner) //May '11 added
+    if (INVALID_HANDLE_VALUE != g_lpInst->hComm) {
+        while (!g_lpInst->fEndListner) // May '11 added
         {
             // Specify the events and start the event thread
-            if (SetCommMask(g_lpInst->hComm, EV_BREAK | EV_CTS | EV_DSR | EV_ERR | EV_RING | EV_RLSD | EV_RXCHAR | EV_RXFLAG))
-            {
-                //Tells the main thread that this thread is ready for action.
-                if (fStarting)
-                {
+            if (SetCommMask(g_lpInst->hComm, EV_BREAK | EV_CTS | EV_DSR |
+                                                 EV_ERR | EV_RING | EV_RLSD |
+                                                 EV_RXCHAR | EV_RXFLAG)) {
+                // Tells the main thread that this thread is ready for action.
+                if (fStarting) {
                     SetEvent(g_lpInst->hStartEvent);
                     fStarting = FALSE;
                 }
-                if (!WaitCommEvent(g_lpInst->hComm, &dwEvtMask, &ov))
-                {
-                    if (GetLastError() == ERROR_IO_PENDING)
-                    {
+                if (!WaitCommEvent(g_lpInst->hComm, &dwEvtMask, &ov)) {
+                    if (GetLastError() == ERROR_IO_PENDING) {
                         DWORD numBytes;
                         BOOL flag = WaitForSingleObject(ov.hEvent, -1);
-                        do
-                        {
-                            flag = GetOverlappedResult(g_lpInst->hComm, &ov, &numBytes, FALSE);
-                        }
-                        while ((GetLastError() == ERROR_IO_PENDING) && !flag);
+                        do {
+                            flag = GetOverlappedResult(g_lpInst->hComm, &ov,
+                                                       &numBytes, FALSE);
+                        } while ((GetLastError() == ERROR_IO_PENDING) && !flag);
                     }
                 }
-                PostMessage((HWND)StartParam, SPM_DISPATCHNOTIFICATIONS, (DWORD)dwEvtMask, 0L);
+                PostMessage((HWND)StartParam, SPM_DISPATCHNOTIFICATIONS,
+                            (DWORD)dwEvtMask, 0L);
             }
         }
     }
@@ -348,17 +357,18 @@ DWORD WINAPI Listner_Proc(LPVOID StartParam)
 
 BOOL LaunchListner(HWND hwnd)
 {
-    if(NULL != g_lpInst->hEventThread) //May '11 added
+    if (NULL != g_lpInst->hEventThread) // May '11 added
     {
         CloseHandle(g_lpInst->hEventThread);
         g_lpInst->hEventThread = NULL;
         g_lpInst->dwEventThread = 0;
     }
     g_lpInst->fEndListner = FALSE;
-    g_lpInst->hEventThread = CreateThread(NULL, 4095, Listner_Proc, hwnd, 0, &g_lpInst->dwEventThread);
+    g_lpInst->hEventThread = CreateThread(NULL, 4095, Listner_Proc, hwnd, 0,
+                                          &g_lpInst->dwEventThread);
     SetThreadPriority(g_lpInst->hEventThread, THREAD_PRIORITY_ABOVE_NORMAL);
 
-    //More robust thread start-up wait.
+    // More robust thread start-up wait.
     WaitForSingleObject(g_lpInst->hStartEvent, 500);
 
     return NULL != g_lpInst->hEventThread;
@@ -384,15 +394,15 @@ BOOL LaunchListner(HWND hwnd)
 
 VOID TerminateListner(VOID)
 {
-    //May '11 Rewrote to eliminate the call to TerminateThread()
+    // May '11 Rewrote to eliminate the call to TerminateThread()
 
     g_lpInst->fEndListner = TRUE;
 
-    //Unblock WaitCommEvent() 
-    SetCommMask(g_lpInst->hComm,0x00);
+    // Unblock WaitCommEvent()
+    SetCommMask(g_lpInst->hComm, 0x00);
     EscapeCommFunction(g_lpInst->hComm, CLRDTR);
 
-    //Clean up
+    // Clean up
     PurgeComm(g_lpInst->hComm, PURGE_RXCLEAR | PURGE_TXCLEAR);
     SetEvent(g_lpInst->hListnerEvent);
 }
@@ -423,17 +433,21 @@ BOOL SerialPort_OnCreate(HWND hwnd, LPCREATESTRUCT lpCreateStruct)
 
     inst.dwEventThread = 0;
     inst.dwPortCount = 0;
-    inst.lpComm = NULL;// initialize the buffer pointer
-    SetStringBuffer(&inst.lpComm,_T("COM1"));
+    inst.lpComm = NULL; // initialize the buffer pointer
+    SetStringBuffer(&inst.lpComm, _T("COM1"));
     inst.flowControl = CtsRtsFlowControl;
     inst.hComm = INVALID_HANDLE_VALUE;
     inst.hEventThread = NULL;
     inst.dwReceiveByteThreshold = 1;
     inst.hwndParent = lpCreateStruct->hwndParent;
     inst.lpPortlist = NULL;
-    inst.hStartEvent = CreateEvent(NULL, TRUE, TRUE, NULL); //Manual reset events
+    inst.hStartEvent =
+        CreateEvent(NULL, TRUE, TRUE, NULL); // Manual reset events
     inst.hIOEvent = CreateEvent(NULL, TRUE, TRUE, NULL);
-    inst.hListnerEvent = CreateEvent(NULL, FALSE, FALSE, NULL); //new AutoResetEvent(false) = CreateEvent(NULL, FALSE, FALSE, NULL);    //AutoResetEvent;
+    inst.hListnerEvent =
+        CreateEvent(NULL, FALSE, FALSE,
+                    NULL); // new AutoResetEvent(false) = CreateEvent(NULL,
+                           // FALSE, FALSE, NULL);    //AutoResetEvent;
 
     return Control_CreateInstanceData(hwnd, &inst);
 }
@@ -462,12 +476,12 @@ VOID SerialPort_OnDestroy(HWND hwnd)
     if (NULL != g_lpInst->lpPortlist)
         FreePortNameList(g_lpInst->lpPortlist);
 
-    if(NULL != g_lpInst->lpComm)
+    if (NULL != g_lpInst->lpComm)
         free(g_lpInst->lpComm);
 
     // Free resources
-    CloseHandle(g_lpInst->hEventThread); //May '11 Added
-    CloseHandle(g_lpInst->hListnerEvent); //May '11 Added
+    CloseHandle(g_lpInst->hEventThread);  // May '11 Added
+    CloseHandle(g_lpInst->hListnerEvent); // May '11 Added
     CloseHandle(g_lpInst->hStartEvent);
     CloseHandle(g_lpInst->hIOEvent);
     Control_FreeInstanceData(hwnd);
@@ -494,95 +508,88 @@ BOOL SerialPort_OnSetConfig(LPCONFIG lpc)
     BOOL fRtn = FALSE;
 
     // Desired options
-    if(SPCF_PORTNAME & lpc->mask)
-    {
-        SetStringBuffer(&g_lpInst->lpComm,lpc->pszPortName);
+    if (SPCF_PORTNAME & lpc->mask) {
+        SetStringBuffer(&g_lpInst->lpComm, lpc->pszPortName);
         fRtn = TRUE;
     }
     if (g_lpInst->hComm == NULL || g_lpInst->hComm == INVALID_HANDLE_VALUE)
         return fRtn;
 
     DCB dcb;
-    if (GetCommState(g_lpInst->hComm, &dcb))
-    {
+    if (GetCommState(g_lpInst->hComm, &dcb)) {
         // Desired options (continued)
-        if(SPCF_BAUDRATE & lpc->mask) dcb.BaudRate = lpc->dwBaudRate;
-        if(SPCF_PARITY & lpc->mask)
-        {
+        if (SPCF_BAUDRATE & lpc->mask)
+            dcb.BaudRate = lpc->dwBaudRate;
+        if (SPCF_PARITY & lpc->mask) {
             dcb.Parity = lpc->bParity;
             dcb.fParity = dcb.Parity != NOPARITY;
         }
-        if(SPCF_DATABITS & lpc->mask) dcb.ByteSize = lpc->bDataBits;
-        if(SPCF_STOPBITS & lpc->mask) dcb.StopBits = lpc->bStopBits;
-        if(SPCF_NULLDISCARD & lpc->mask) dcb.fNull = lpc->fDiscardNull;
-        if(SPCF_FLOWCONT & lpc->mask)
-        {
+        if (SPCF_DATABITS & lpc->mask)
+            dcb.ByteSize = lpc->bDataBits;
+        if (SPCF_STOPBITS & lpc->mask)
+            dcb.StopBits = lpc->bStopBits;
+        if (SPCF_NULLDISCARD & lpc->mask)
+            dcb.fNull = lpc->fDiscardNull;
+        if (SPCF_FLOWCONT & lpc->mask) {
             g_lpInst->flowControl = lpc->flowControl;
 
-            //Setup the flow control
+            // Setup the flow control
             dcb.fDsrSensitivity = FALSE;
             dcb.fTXContinueOnXoff = FALSE;
             dcb.fRtsControl = RTS_CONTROL_DISABLE;
             dcb.fDtrControl = DTR_CONTROL_ENABLE;
 
-            switch (g_lpInst->flowControl)
-            {
-                case NoFlowControl:
-                {
-                    dcb.fOutxCtsFlow = FALSE;
-                    dcb.fOutxDsrFlow = FALSE;
-                    dcb.fOutX = FALSE;
-                    dcb.fInX = FALSE;
-                    break;
-                }
-                case CtsRtsFlowControl:
-                {
-                    dcb.fOutxCtsFlow = TRUE;
-                    dcb.fOutxDsrFlow = FALSE;
-                    dcb.fRtsControl = RTS_CONTROL_HANDSHAKE;
-                    dcb.fOutX = FALSE;
-                    dcb.fInX = FALSE;
-                    break;
-                }
-                case CtsDtrFlowControl:
-                {
-                    dcb.fOutxCtsFlow = TRUE;
-                    dcb.fOutxDsrFlow = FALSE;
-                    dcb.fDtrControl = DTR_CONTROL_HANDSHAKE;
-                    dcb.fOutX = FALSE;
-                    dcb.fInX = FALSE;
-                    break;
-                }
-                case DsrRtsFlowControl:
-                {
-                    dcb.fOutxCtsFlow = FALSE;
-                    dcb.fOutxDsrFlow = TRUE;
-                    dcb.fRtsControl = RTS_CONTROL_HANDSHAKE;
-                    dcb.fOutX = FALSE;
-                    dcb.fInX = FALSE;
-                    break;
-                }
-                case DsrDtrFlowControl:
-                {
-                    dcb.fOutxCtsFlow = FALSE;
-                    dcb.fOutxDsrFlow = TRUE;
-                    dcb.fDtrControl = DTR_CONTROL_HANDSHAKE;
-                    dcb.fOutX = FALSE;
-                    dcb.fInX = FALSE;
-                    break;
-                }
-                case XonXoffFlowControl:
-                {
-                    dcb.fOutxCtsFlow = FALSE;
-                    dcb.fOutxDsrFlow = FALSE;
-                    dcb.fOutX = TRUE;
-                    dcb.fInX = TRUE;
-                    dcb.XonChar = 0x11;
-                    dcb.XoffChar = 0x13;
-                    dcb.XoffLim = 100;
-                    dcb.XonLim = 100;
-                    break;
-                }
+            switch (g_lpInst->flowControl) {
+            case NoFlowControl: {
+                dcb.fOutxCtsFlow = FALSE;
+                dcb.fOutxDsrFlow = FALSE;
+                dcb.fOutX = FALSE;
+                dcb.fInX = FALSE;
+                break;
+            }
+            case CtsRtsFlowControl: {
+                dcb.fOutxCtsFlow = TRUE;
+                dcb.fOutxDsrFlow = FALSE;
+                dcb.fRtsControl = RTS_CONTROL_HANDSHAKE;
+                dcb.fOutX = FALSE;
+                dcb.fInX = FALSE;
+                break;
+            }
+            case CtsDtrFlowControl: {
+                dcb.fOutxCtsFlow = TRUE;
+                dcb.fOutxDsrFlow = FALSE;
+                dcb.fDtrControl = DTR_CONTROL_HANDSHAKE;
+                dcb.fOutX = FALSE;
+                dcb.fInX = FALSE;
+                break;
+            }
+            case DsrRtsFlowControl: {
+                dcb.fOutxCtsFlow = FALSE;
+                dcb.fOutxDsrFlow = TRUE;
+                dcb.fRtsControl = RTS_CONTROL_HANDSHAKE;
+                dcb.fOutX = FALSE;
+                dcb.fInX = FALSE;
+                break;
+            }
+            case DsrDtrFlowControl: {
+                dcb.fOutxCtsFlow = FALSE;
+                dcb.fOutxDsrFlow = TRUE;
+                dcb.fDtrControl = DTR_CONTROL_HANDSHAKE;
+                dcb.fOutX = FALSE;
+                dcb.fInX = FALSE;
+                break;
+            }
+            case XonXoffFlowControl: {
+                dcb.fOutxCtsFlow = FALSE;
+                dcb.fOutxDsrFlow = FALSE;
+                dcb.fOutX = TRUE;
+                dcb.fInX = TRUE;
+                dcb.XonChar = 0x11;
+                dcb.XoffChar = 0x13;
+                dcb.XoffLim = 100;
+                dcb.XonLim = 100;
+                break;
+            }
             }
         }
         fRtn = SetCommState(g_lpInst->hComm, &dcb);
@@ -615,21 +622,26 @@ BOOL SerialPort_OnGetConfig(LPCONFIG lpc)
         return FALSE;
 
     UINT mask = lpc->mask;
-    memset(lpc,0,sizeof(CONFIG));
+    memset(lpc, 0, sizeof(CONFIG));
 
     // Desired options
     lpc->mask = mask;
-    if(SPCF_PORTNAME & mask)
-    {
+    if (SPCF_PORTNAME & mask) {
         lpc->pszPortName = g_lpInst->lpComm;
         lpc->cchTextMax = _tcslen(g_lpInst->lpComm) + 1;
     }
-    if(SPCF_BAUDRATE & mask) lpc->dwBaudRate = dcb.BaudRate;
-    if(SPCF_PARITY & mask) lpc->bParity = dcb.Parity;
-    if(SPCF_DATABITS & mask) lpc->bDataBits = dcb.ByteSize;
-    if(SPCF_STOPBITS & mask) lpc->bStopBits = dcb.StopBits;
-    if(SPCF_NULLDISCARD & lpc->mask) lpc->fDiscardNull = dcb.fNull;
-    if(SPCF_FLOWCONT & mask) lpc->flowControl = g_lpInst->flowControl;
+    if (SPCF_BAUDRATE & mask)
+        lpc->dwBaudRate = dcb.BaudRate;
+    if (SPCF_PARITY & mask)
+        lpc->bParity = dcb.Parity;
+    if (SPCF_DATABITS & mask)
+        lpc->bDataBits = dcb.ByteSize;
+    if (SPCF_STOPBITS & mask)
+        lpc->bStopBits = dcb.StopBits;
+    if (SPCF_NULLDISCARD & lpc->mask)
+        lpc->fDiscardNull = dcb.fNull;
+    if (SPCF_FLOWCONT & mask)
+        lpc->flowControl = g_lpInst->flowControl;
 
     return TRUE;
 }
@@ -653,22 +665,17 @@ BOOL SerialPort_OnSetReadTimout(DWORD dwTimeout)
 {
     COMMTIMEOUTS aTimeout;
     memset(&aTimeout, 0, sizeof(aTimeout));
-    if(!GetCommTimeouts(g_lpInst->hComm, &aTimeout))
+    if (!GetCommTimeouts(g_lpInst->hComm, &aTimeout))
         return FALSE;
-    if (0 == dwTimeout)
-    {
+    if (0 == dwTimeout) {
         aTimeout.ReadTotalTimeoutConstant = 0;
         aTimeout.ReadTotalTimeoutMultiplier = 0;
         aTimeout.ReadIntervalTimeout = -1;
-    }
-    else if (-1 == dwTimeout)
-    {
+    } else if (-1 == dwTimeout) {
         aTimeout.ReadTotalTimeoutConstant = -2;
         aTimeout.ReadTotalTimeoutMultiplier = -1;
         aTimeout.ReadIntervalTimeout = -1;
-    }
-    else
-    {
+    } else {
         aTimeout.ReadTotalTimeoutConstant = dwTimeout;
         aTimeout.ReadTotalTimeoutMultiplier = -1;
         aTimeout.ReadIntervalTimeout = -1;
@@ -695,7 +702,7 @@ BOOL SerialPort_OnSetWriteTimeout(DWORD dwTimeout)
 {
     COMMTIMEOUTS aTimeout;
     memset(&aTimeout, 0, sizeof(aTimeout));
-    if(!GetCommTimeouts(g_lpInst->hComm, &aTimeout))
+    if (!GetCommTimeouts(g_lpInst->hComm, &aTimeout))
         return FALSE;
 
     aTimeout.WriteTotalTimeoutConstant = dwTimeout == -1 ? 0 : dwTimeout;
@@ -726,16 +733,14 @@ BOOL SerialPort_OnWriteBytes(LPBYTE lpBuf, DWORD dwCount)
 
     if (NULL == lpBuf)
         fRtn = FALSE;
-    else
-    {
+    else {
         OVERLAPPED ov;
         memset(&ov, 0, sizeof(ov));
         ov.hEvent = g_lpInst->hIOEvent;
 
-        if (!(fRtn = WriteFile(g_lpInst->hComm, lpBuf, dwCount, &actual, &ov)))
-        {
-            if (GetLastError() != ERROR_IO_PENDING)
-            {
+        if (!(fRtn =
+                  WriteFile(g_lpInst->hComm, lpBuf, dwCount, &actual, &ov))) {
+            if (GetLastError() != ERROR_IO_PENDING) {
                 dwCount -= actual;
                 actual = 0;
                 GetOverlappedResult(g_lpInst->hComm, &ov, &actual, TRUE);
@@ -769,17 +774,15 @@ BOOL SerialPort_OnWriteString(LPTSTR lpsztext)
 
     if (NULL == lpsztext)
         fRtn = FALSE;
-    else
-    {
+    else {
         DWORD dwCount = _tcslen(lpsztext) + 1;
         OVERLAPPED ov;
         memset(&ov, 0, sizeof(ov));
         ov.hEvent = g_lpInst->hIOEvent;
 
-        if (!(fRtn = WriteFile(g_lpInst->hComm, lpsztext, dwCount, &actual, &ov)))
-        {
-            if (GetLastError() != ERROR_IO_PENDING)
-            {
+        if (!(fRtn = WriteFile(g_lpInst->hComm, lpsztext, dwCount, &actual,
+                               &ov))) {
+            if (GetLastError() != ERROR_IO_PENDING) {
                 dwCount -= actual;
                 actual = 0;
                 GetOverlappedResult(g_lpInst->hComm, &ov, &actual, TRUE);
@@ -868,7 +871,8 @@ DWORD SerialPort_OnReadString(LPTSTR lpszBuf, DWORD dwCount)
 
 BOOL SerialPort_OnClose(VOID)
 {
-    if (g_lpInst->hComm != NULL && g_lpInst->hComm != INVALID_HANDLE_VALUE) //May '11 changed || to &&
+    if (g_lpInst->hComm != NULL &&
+        g_lpInst->hComm != INVALID_HANDLE_VALUE) // May '11 changed || to &&
     {
         TerminateListner();
         CloseHandle(g_lpInst->hComm);
@@ -885,7 +889,7 @@ BOOL SerialPort_OnClose(VOID)
 *     PURPOSE:  SPM_OPEN handler.
 *
 *     PARAMS:   HWND hwnd - the handle of serial port class
-*               LPCONFIG lpc - pointer to config struct 
+*               LPCONFIG lpc - pointer to config struct
 *
 *     RETURNS:  TRUE if successfull
 *
@@ -898,12 +902,11 @@ BOOL SerialPort_OnOpen(HWND hwnd, LPCONFIG lpc)
 {
     SerialPort_OnClose();
 
-    if(SPCF_PORTNAME & lpc->mask)
-    {
-        SetStringBuffer(&g_lpInst->lpComm,lpc->pszPortName);
-        lpc->mask^= SPCF_PORTNAME;// Now that we handled this, switch it out
+    if (SPCF_PORTNAME & lpc->mask) {
+        SetStringBuffer(&g_lpInst->lpComm, lpc->pszPortName);
+        lpc->mask ^= SPCF_PORTNAME; // Now that we handled this, switch it out
     }
-    TCHAR buf [MAX_PATH];
+    TCHAR buf[MAX_PATH];
     LPTSTR format;
 
 #ifdef _UNICODE
@@ -911,10 +914,11 @@ BOOL SerialPort_OnOpen(HWND hwnd, LPCONFIG lpc)
 #else
     format = _T("\\\\.\\%s");
 #endif
-    _stprintf(buf, MAX_PATH, format, g_lpInst->lpComm);
+    _sntprintf(buf, MAX_PATH, format, g_lpInst->lpComm);
 
-    //Call CreateFile to open the comms port
-    g_lpInst->hComm = CreateFile(buf, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
+    // Call CreateFile to open the comms port
+    g_lpInst->hComm = CreateFile(buf, GENERIC_READ | GENERIC_WRITE, 0, NULL,
+                                 OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
     if (g_lpInst->hComm == INVALID_HANDLE_VALUE)
         return FALSE;
 
@@ -922,12 +926,30 @@ BOOL SerialPort_OnOpen(HWND hwnd, LPCONFIG lpc)
         return FALSE;
 
     // Defaults
-    if(!(SPCF_BAUDRATE & lpc->mask)){ lpc->mask |= SPCF_BAUDRATE; lpc->dwBaudRate = CBR_9600; }
-    if(!(SPCF_PARITY   & lpc->mask)){ lpc->mask |= SPCF_PARITY;   lpc->bParity = NOPARITY; }
-    if(!(SPCF_DATABITS & lpc->mask)){ lpc->mask |= SPCF_DATABITS; lpc->bDataBits = 8; }
-    if(!(SPCF_STOPBITS & lpc->mask)){ lpc->mask |= SPCF_STOPBITS; lpc->bStopBits = ONESTOPBIT; }
-    if(!(SPCF_NULLDISCARD & lpc->mask)){ lpc->mask |= SPCF_NULLDISCARD; lpc->fDiscardNull = FALSE; }
-    if(!(SPCF_FLOWCONT & lpc->mask)){ lpc->mask |= SPCF_FLOWCONT; lpc->flowControl = CtsRtsFlowControl; }
+    if (!(SPCF_BAUDRATE & lpc->mask)) {
+        lpc->mask |= SPCF_BAUDRATE;
+        lpc->dwBaudRate = CBR_9600;
+    }
+    if (!(SPCF_PARITY & lpc->mask)) {
+        lpc->mask |= SPCF_PARITY;
+        lpc->bParity = NOPARITY;
+    }
+    if (!(SPCF_DATABITS & lpc->mask)) {
+        lpc->mask |= SPCF_DATABITS;
+        lpc->bDataBits = 8;
+    }
+    if (!(SPCF_STOPBITS & lpc->mask)) {
+        lpc->mask |= SPCF_STOPBITS;
+        lpc->bStopBits = ONESTOPBIT;
+    }
+    if (!(SPCF_NULLDISCARD & lpc->mask)) {
+        lpc->mask |= SPCF_NULLDISCARD;
+        lpc->fDiscardNull = FALSE;
+    }
+    if (!(SPCF_FLOWCONT & lpc->mask)) {
+        lpc->mask |= SPCF_FLOWCONT;
+        lpc->flowControl = CtsRtsFlowControl;
+    }
 
     return SerialPort_OnSetConfig(lpc);
 }
@@ -961,88 +983,113 @@ VOID SerialPort_NotifyDispatcher(HWND hwnd, DWORD dwEvtMask)
     nmhdr.idFrom = GetDlgCtrlID(hwnd);
     nmSerial.hdr = nmhdr;
 
-    if (dwEvtMask & EV_ERR)
-    {
+    if (dwEvtMask & EV_ERR) {
         DWORD dwErrors;
 
-        if (ClearCommError(g_lpInst->hComm, &dwErrors, NULL))
-        {
+        if (ClearCommError(g_lpInst->hComm, &dwErrors, NULL)) {
             nmSerial.hdr.code = SPN_ERRORRECEIVED;
 
-            if (dwErrors & CE_TXFULL)   //The application tried to transmit a character, but the output buffer was full.
+            if (dwErrors &
+                CE_TXFULL) // The application tried to transmit a character, but
+                           // the output buffer was full.
             {
                 nmSerial.dwCode = CE_TXFULL;
-                FORWARD_WM_NOTIFY(g_lpInst->hwndParent, nmhdr.idFrom, &nmSerial, SNDMSG);
+                FORWARD_WM_NOTIFY(g_lpInst->hwndParent, nmhdr.idFrom, &nmSerial,
+                                  SNDMSG);
             }
-            if (dwErrors & CE_RXOVER)   //An input buffer overflow has occurred. There is either no room in the input buffer, or a character was received after the end-of-file (EOF) character. 
+            if (dwErrors & CE_RXOVER) // An input buffer overflow has occurred.
+                                      // There is either no room in the input
+                                      // buffer, or a character was received
+                                      // after the end-of-file (EOF) character.
             {
                 nmSerial.dwCode = CE_RXOVER;
-                FORWARD_WM_NOTIFY(g_lpInst->hwndParent, nmhdr.idFrom, &nmSerial, SNDMSG);
+                FORWARD_WM_NOTIFY(g_lpInst->hwndParent, nmhdr.idFrom, &nmSerial,
+                                  SNDMSG);
             }
-            if (dwErrors & CE_OVERRUN)  //A character-buffer overrun has occurred. The next character is lost. 
+            if (dwErrors & CE_OVERRUN) // A character-buffer overrun has
+                                       // occurred. The next character is lost.
             {
                 nmSerial.dwCode = CE_OVERRUN;
-                FORWARD_WM_NOTIFY(g_lpInst->hwndParent, nmhdr.idFrom, &nmSerial, SNDMSG);
+                FORWARD_WM_NOTIFY(g_lpInst->hwndParent, nmhdr.idFrom, &nmSerial,
+                                  SNDMSG);
             }
-            if (dwErrors & CE_RXPARITY) //The hardware detected a parity error. 
+            if (dwErrors & CE_RXPARITY) // The hardware detected a parity error.
             {
                 nmSerial.dwCode = CE_RXPARITY;
-                FORWARD_WM_NOTIFY(g_lpInst->hwndParent, nmhdr.idFrom, &nmSerial, SNDMSG);
+                FORWARD_WM_NOTIFY(g_lpInst->hwndParent, nmhdr.idFrom, &nmSerial,
+                                  SNDMSG);
             }
-            if (dwErrors & CE_FRAME)    //The hardware detected a framing error. 
+            if (dwErrors & CE_FRAME) // The hardware detected a framing error.
             {
                 nmSerial.dwCode = CE_FRAME;
-                FORWARD_WM_NOTIFY(g_lpInst->hwndParent, nmhdr.idFrom, &nmSerial, SNDMSG);
+                FORWARD_WM_NOTIFY(g_lpInst->hwndParent, nmhdr.idFrom, &nmSerial,
+                                  SNDMSG);
             }
         }
     }
-    if (dwEvtMask & (EV_CTS | EV_DSR | EV_RLSD | EV_BREAK | EV_RING))
-    {
+    if (dwEvtMask & (EV_CTS | EV_DSR | EV_RLSD | EV_BREAK | EV_RING)) {
         nmSerial.hdr.code = SPN_PINCHANGED;
 
-        if (dwEvtMask & EV_CTS) //The Clear to Send (CTS) signal changed state. This signal is used to indicate whether data can be sent over the serial port.
+        if (dwEvtMask & EV_CTS) // The Clear to Send (CTS) signal changed state.
+                                // This signal is used to indicate whether data
+                                // can be sent over the serial port.
         {
             nmSerial.dwCode = EV_CTS;
-            FORWARD_WM_NOTIFY(g_lpInst->hwndParent, nmhdr.idFrom, &nmSerial, SNDMSG);
+            FORWARD_WM_NOTIFY(g_lpInst->hwndParent, nmhdr.idFrom, &nmSerial,
+                              SNDMSG);
         }
-        if (dwEvtMask & EV_DSR) //The Data Set Ready (DSR) signal changed state. This signal is used to indicate whether the device on the serial port is ready to operate.
+        if (dwEvtMask &
+            EV_DSR) // The Data Set Ready (DSR) signal changed state. This
+                    // signal is used to indicate whether the device on the
+                    // serial port is ready to operate.
         {
             nmSerial.dwCode = EV_DSR;
-            FORWARD_WM_NOTIFY(g_lpInst->hwndParent, nmhdr.idFrom, &nmSerial, SNDMSG);
+            FORWARD_WM_NOTIFY(g_lpInst->hwndParent, nmhdr.idFrom, &nmSerial,
+                              SNDMSG);
         }
-        if (dwEvtMask & EV_RLSD)    //The Carrier Detect (CD) signal changed state. This signal is used to indicate whether a modem is connected to a working phone line and a data carrier signal is detected.
+        if (dwEvtMask &
+            EV_RLSD) // The Carrier Detect (CD) signal changed state. This
+                     // signal is used to indicate whether a modem is connected
+                     // to a working phone line and a data carrier signal is
+                     // detected.
         {
             nmSerial.dwCode = EV_RLSD;
-            FORWARD_WM_NOTIFY(g_lpInst->hwndParent, nmhdr.idFrom, &nmSerial, SNDMSG);
+            FORWARD_WM_NOTIFY(g_lpInst->hwndParent, nmhdr.idFrom, &nmSerial,
+                              SNDMSG);
         }
-        if (dwEvtMask & EV_RING)    //A ring indicator was detected.
+        if (dwEvtMask & EV_RING) // A ring indicator was detected.
         {
             nmSerial.dwCode = EV_RING;
-            FORWARD_WM_NOTIFY(g_lpInst->hwndParent, nmhdr.idFrom, &nmSerial, SNDMSG);
+            FORWARD_WM_NOTIFY(g_lpInst->hwndParent, nmhdr.idFrom, &nmSerial,
+                              SNDMSG);
         }
-        if (dwEvtMask & EV_BREAK)   //A break was detected on input. 
+        if (dwEvtMask & EV_BREAK) // A break was detected on input.
         {
             nmSerial.dwCode = EV_BREAK;
-            FORWARD_WM_NOTIFY(g_lpInst->hwndParent, nmhdr.idFrom, &nmSerial, SNDMSG);
+            FORWARD_WM_NOTIFY(g_lpInst->hwndParent, nmhdr.idFrom, &nmSerial,
+                              SNDMSG);
         }
     }
-    if (dwEvtMask & (EV_RXCHAR | EV_RXFLAG))
-    {
+    if (dwEvtMask & (EV_RXCHAR | EV_RXFLAG)) {
         nmSerial.hdr.code = SPN_DATARECEIVED;
 
-        if (dwEvtMask & EV_RXCHAR)  //A character was received and placed in the input buffer.
+        if (dwEvtMask & EV_RXCHAR) // A character was received and placed in the
+                                   // input buffer.
         {
-            if(0 < g_lpInst->dwReceiveByteThreshold &&
-                g_lpInst->dwReceiveByteThreshold <= SerialPort_BytesToRead(hwnd))
-            {
+            if (0 < g_lpInst->dwReceiveByteThreshold &&
+                g_lpInst->dwReceiveByteThreshold <=
+                    SerialPort_BytesToRead(hwnd)) {
                 nmSerial.dwCode = EV_RXCHAR;
-                FORWARD_WM_NOTIFY(g_lpInst->hwndParent, nmhdr.idFrom, &nmSerial, SNDMSG);
+                FORWARD_WM_NOTIFY(g_lpInst->hwndParent, nmhdr.idFrom, &nmSerial,
+                                  SNDMSG);
             }
         }
-        if (dwEvtMask & EV_RXFLAG)  //The end of file character was received and placed in the input buffer.
+        if (dwEvtMask & EV_RXFLAG) // The end of file character was received and
+                                   // placed in the input buffer.
         {
             nmSerial.dwCode = EV_RXFLAG;
-            FORWARD_WM_NOTIFY(g_lpInst->hwndParent, nmhdr.idFrom, &nmSerial, SNDMSG);
+            FORWARD_WM_NOTIFY(g_lpInst->hwndParent, nmhdr.idFrom, &nmSerial,
+                              SNDMSG);
         }
     }
 }
@@ -1065,122 +1112,116 @@ VOID SerialPort_NotifyDispatcher(HWND hwnd, DWORD dwEvtMask)
 *
 \****************************************************************************/
 
-LRESULT CALLBACK SerialPort_Proc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+LRESULT CALLBACK SerialPort_Proc(HWND hwnd, UINT msg, WPARAM wParam,
+                                 LPARAM lParam)
 {
-    if (SPM_DISPATCHNOTIFICATIONS <= msg && msg <= SPM_GETRXTHRESHOLD)
-    {
-        Control_GetInstanceData(hwnd, &g_lpInst);   //Update instance pointer
+    if (SPM_DISPATCHNOTIFICATIONS <= msg && msg <= SPM_GETRXTHRESHOLD) {
+        Control_GetInstanceData(hwnd, &g_lpInst); // Update instance pointer
     }
-    switch (msg)
-    {
-        HANDLE_MSG (hwnd, WM_CREATE, SerialPort_OnCreate);
-        HANDLE_MSG (hwnd, WM_DESTROY, SerialPort_OnDestroy);
+    switch (msg) {
+        HANDLE_MSG(hwnd, WM_CREATE, SerialPort_OnCreate);
+        HANDLE_MSG(hwnd, WM_DESTROY, SerialPort_OnDestroy);
 
-        case SPM_DISPATCHNOTIFICATIONS:
-            SerialPort_NotifyDispatcher(hwnd, (DWORD)wParam);
-            break;
+    case SPM_DISPATCHNOTIFICATIONS:
+        SerialPort_NotifyDispatcher(hwnd, (DWORD)wParam);
+        break;
 
-        case SPM_GETPORTNAMES:
-            if (NULL != g_lpInst->lpPortlist)
-                FreePortNameList(g_lpInst->lpPortlist);
+    case SPM_GETPORTNAMES:
+        if (NULL != g_lpInst->lpPortlist)
+            FreePortNameList(g_lpInst->lpPortlist);
 
-            if (ERROR_SUCCESS == GetPortNames(&(g_lpInst->lpPortlist), &(g_lpInst->dwPortCount)))
-            {
-                *((LPDWORD)wParam) = g_lpInst->dwPortCount;
-                return (LRESULT) g_lpInst->lpPortlist;
-            }
-            return (LRESULT) NULL;
-
-        case SPM_SETCONFIG:
-            return SerialPort_OnSetConfig((LPCONFIG)lParam);
-
-        case SPM_GETCONFIG:
-            return SerialPort_OnGetConfig((LPCONFIG)lParam);
-
-        case SPM_SETREADTIMEOUT:
-            return SerialPort_OnSetReadTimout((DWORD)wParam);
-
-        case SPM_GETREADTIMEOUT:
-        {
-            COMMTIMEOUTS aTimeout;
-            memset(&aTimeout, 0, sizeof(aTimeout));
-            if(!GetCommTimeouts(g_lpInst->hComm, &aTimeout))
-                return FALSE;
-            return (LRESULT)aTimeout.ReadTotalTimeoutConstant == -2 ?
-                -1 : aTimeout.ReadTotalTimeoutConstant;
+        if (ERROR_SUCCESS ==
+            GetPortNames(&(g_lpInst->lpPortlist), &(g_lpInst->dwPortCount))) {
+            *((LPDWORD)wParam) = g_lpInst->dwPortCount;
+            return (LRESULT)g_lpInst->lpPortlist;
         }
-        case SPM_SETWRITETIMEOUT:
-            return SerialPort_OnSetWriteTimeout((DWORD)wParam);
+        return (LRESULT)NULL;
 
-        case SPM_GETWRITETIMEOUT:
-        {
-            COMMTIMEOUTS aTimeout;
-            memset(&aTimeout, 0, sizeof(aTimeout));
-            if(!GetCommTimeouts(g_lpInst->hComm, &aTimeout))
-                return FALSE;
-            return (LRESULT)aTimeout.WriteTotalTimeoutConstant;
-        }
-        case SPM_GETCTS:
-        {
-            DWORD status;
-            if (!GetCommModemStatus(g_lpInst->hComm, &status))
-                return -1;
-            return (LRESULT)status & MS_CTS_ON;
-        }
-        case SPM_GETDSR:
-        {
-            DWORD status;
-            if (!GetCommModemStatus(g_lpInst->hComm, &status))
-                return -1;
-            return (LRESULT)status & MS_DSR_ON;
-        }
-        case SPM_BYTESTOREAD:
-        {
-            DWORD status;
-            COMSTAT comStat;
+    case SPM_SETCONFIG:
+        return SerialPort_OnSetConfig((LPCONFIG)lParam);
 
-            ClearCommError(g_lpInst->hComm, &status, &comStat);
+    case SPM_GETCONFIG:
+        return SerialPort_OnGetConfig((LPCONFIG)lParam);
 
-            return (LRESULT)comStat.cbInQue;
-        }
-        case SPM_BYTESTOWRITE:
-        {
-            DWORD status;
-            COMSTAT comStat;
-            ClearCommError(g_lpInst->hComm, &status, &comStat);
+    case SPM_SETREADTIMEOUT:
+        return SerialPort_OnSetReadTimout((DWORD)wParam);
 
-            return (LRESULT)comStat.cbOutQue;
-        }
-        case SPM_WRITEBYTES:
-            return SerialPort_OnWriteBytes((LPBYTE)lParam, (DWORD)wParam);
+    case SPM_GETREADTIMEOUT: {
+        COMMTIMEOUTS aTimeout;
+        memset(&aTimeout, 0, sizeof(aTimeout));
+        if (!GetCommTimeouts(g_lpInst->hComm, &aTimeout))
+            return FALSE;
+        return (LRESULT)aTimeout.ReadTotalTimeoutConstant == -2
+                   ? -1
+                   : aTimeout.ReadTotalTimeoutConstant;
+    }
+    case SPM_SETWRITETIMEOUT:
+        return SerialPort_OnSetWriteTimeout((DWORD)wParam);
 
-        case SPM_READBYTES:
-            return SerialPort_OnReadBytes((LPBYTE)lParam, (DWORD)wParam);
+    case SPM_GETWRITETIMEOUT: {
+        COMMTIMEOUTS aTimeout;
+        memset(&aTimeout, 0, sizeof(aTimeout));
+        if (!GetCommTimeouts(g_lpInst->hComm, &aTimeout))
+            return FALSE;
+        return (LRESULT)aTimeout.WriteTotalTimeoutConstant;
+    }
+    case SPM_GETCTS: {
+        DWORD status;
+        if (!GetCommModemStatus(g_lpInst->hComm, &status))
+            return -1;
+        return (LRESULT)status & MS_CTS_ON;
+    }
+    case SPM_GETDSR: {
+        DWORD status;
+        if (!GetCommModemStatus(g_lpInst->hComm, &status))
+            return -1;
+        return (LRESULT)status & MS_DSR_ON;
+    }
+    case SPM_BYTESTOREAD: {
+        DWORD status;
+        COMSTAT comStat;
 
-        case SPM_WRITESTRING:
-            return SerialPort_OnWriteString((LPTSTR)lParam);
+        ClearCommError(g_lpInst->hComm, &status, &comStat);
 
-        case SPM_READSTRING:
-            return SerialPort_OnReadString((LPTSTR)lParam, (DWORD)wParam);
+        return (LRESULT)comStat.cbInQue;
+    }
+    case SPM_BYTESTOWRITE: {
+        DWORD status;
+        COMSTAT comStat;
+        ClearCommError(g_lpInst->hComm, &status, &comStat);
 
-        case SPM_CLOSE:
-            return SerialPort_OnClose();
+        return (LRESULT)comStat.cbOutQue;
+    }
+    case SPM_WRITEBYTES:
+        return SerialPort_OnWriteBytes((LPBYTE)lParam, (DWORD)wParam);
 
-        case SPM_OPEN:
-            return SerialPort_OnOpen(hwnd, (LPCONFIG)lParam);
+    case SPM_READBYTES:
+        return SerialPort_OnReadBytes((LPBYTE)lParam, (DWORD)wParam);
 
-        case SPM_FLUSH:
-            return PurgeComm(g_lpInst->hComm, (DWORD)wParam);
+    case SPM_WRITESTRING:
+        return SerialPort_OnWriteString((LPTSTR)lParam);
 
-        case SPM_SETRXTHRESHOLD:
-            g_lpInst->dwReceiveByteThreshold = (DWORD)wParam;
-                return TRUE;
+    case SPM_READSTRING:
+        return SerialPort_OnReadString((LPTSTR)lParam, (DWORD)wParam);
 
-        case SPM_GETRXTHRESHOLD:
-            return (LRESULT)g_lpInst->dwReceiveByteThreshold;
+    case SPM_CLOSE:
+        return SerialPort_OnClose();
 
-        default:
-            return DefWindowProc(hwnd, msg, wParam, lParam);
+    case SPM_OPEN:
+        return SerialPort_OnOpen(hwnd, (LPCONFIG)lParam);
+
+    case SPM_FLUSH:
+        return PurgeComm(g_lpInst->hComm, (DWORD)wParam);
+
+    case SPM_SETRXTHRESHOLD:
+        g_lpInst->dwReceiveByteThreshold = (DWORD)wParam;
+        return TRUE;
+
+    case SPM_GETRXTHRESHOLD:
+        return (LRESULT)g_lpInst->dwReceiveByteThreshold;
+
+    default:
+        return DefWindowProc(hwnd, msg, wParam, lParam);
     }
     return 0;
 }
@@ -1244,13 +1285,14 @@ HWND New_SerialPortControl(HWND hParent, DWORD dwID)
     static ATOM aSerialPortControl = 0;
     static HWND hSerial;
 
-    HINSTANCE hinst = (HINSTANCE) GetWindowLongPtr(hParent,GWLP_HINSTANCE);
+    HINSTANCE hinst = (HINSTANCE)GetWindowLongPtr(hParent, GWLP_HINSTANCE);
 
     // Only need to register serial control once
     if (!aSerialPortControl)
         aSerialPortControl = InitSerialPortControl(hinst);
 
-    hSerial = CreateWindowEx(0, g_szClassName, _T(""), WS_CHILD, 0, 0, 0, 0, hParent, (HMENU)dwID, hinst, NULL);
+    hSerial = CreateWindowEx(0, g_szClassName, _T(""), WS_CHILD, 0, 0, 0, 0,
+                             hParent, (HMENU)dwID, hinst, NULL);
 
     return hSerial;
 }
