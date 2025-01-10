@@ -458,6 +458,14 @@ BOOL GetPortsEx(LPSPPORTEX **lpPortExList, LPSPPORTEXPARAMS lpPortExParams,
             continue;
         }
 
+        lpList[n] = (LPSPPORTEX)malloc(sizeof(SPPORTEX));
+        if (lpList[n] == NULL) {
+            FreePortExList(lpList);
+            SetupDiDestroyDeviceInfoList(hDevInfo);
+            return FALSE;
+        }
+        memcpy(lpList[n], &portEx, sizeof(SPPORTEX));
+        n++;
         if (n >= caps) {
             caps += CAPS;
             LPSPPORTEX *lpListNew =
@@ -469,14 +477,6 @@ BOOL GetPortsEx(LPSPPORTEX **lpPortExList, LPSPPORTEXPARAMS lpPortExParams,
             }
             lpList = lpListNew;
         }
-        lpList[n] = (LPSPPORTEX)malloc(sizeof(SPPORTEX));
-        if (lpList[n] == NULL) {
-            FreePortExList(lpList);
-            SetupDiDestroyDeviceInfoList(hDevInfo);
-            return FALSE;
-        }
-        memcpy(lpList[n], &portEx, sizeof(SPPORTEX));
-        n++;
         lpList[n] = NULL;
     }
 
