@@ -1,4 +1,4 @@
-/****************************************************************************\
+﻿/****************************************************************************\
 *
 *     FILE:     SerialPort.c
 *
@@ -384,7 +384,7 @@ BOOL GetPortsEx(LPSPPORTEX **lpPortExList, LPSPPORTEXPARAMS lpPortExParams,
     if (lpPortExParams != NULL) {
         mask = lpPortExParams->mask;
     }
-    if ((mask & SPPF_PRESENT) && lpPortExParams->bPresent) {
+    if ((mask & SPPF_PRESENT) && lpPortExParams && lpPortExParams->bPresent) {
         dwFlags |= DIGCF_PRESENT;
     }
     HDEVINFO hDevInfo = SetupDiGetClassDevs(&guidSerial, NULL, NULL, dwFlags);
@@ -458,15 +458,7 @@ BOOL GetPortsEx(LPSPPORTEX **lpPortExList, LPSPPORTEXPARAMS lpPortExParams,
             continue;
         }
 
-        lpList[n] = (LPSPPORTEX)malloc(sizeof(SPPORTEX));
-        if (lpList[n] == NULL) {
-            FreePortExList(lpList);
-            SetupDiDestroyDeviceInfoList(hDevInfo);
-            return FALSE;
-        }
-        memcpy(lpList[n], &portEx, sizeof(SPPORTEX));
-        n++;
-        if (n > caps) {
+        if (n >= caps) {
             caps += CAPS;
             LPSPPORTEX *lpListNew =
                 (LPSPPORTEX *)realloc(lpList, caps * sizeof(LPSPPORTEX));
@@ -477,6 +469,14 @@ BOOL GetPortsEx(LPSPPORTEX **lpPortExList, LPSPPORTEXPARAMS lpPortExParams,
             }
             lpList = lpListNew;
         }
+        lpList[n] = (LPSPPORTEX)malloc(sizeof(SPPORTEX));
+        if (lpList[n] == NULL) {
+            FreePortExList(lpList);
+            SetupDiDestroyDeviceInfoList(hDevInfo);
+            return FALSE;
+        }
+        memcpy(lpList[n], &portEx, sizeof(SPPORTEX));
+        n++;
         lpList[n] = NULL;
     }
 
