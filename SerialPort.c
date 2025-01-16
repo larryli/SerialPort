@@ -183,8 +183,8 @@ static BOOL Control_FreeInstanceData(HWND hControl)
 
 static VOID SetStringBuffer(LPTSTR *lppBuf, LPTSTR value)
 {
-    INT len = _tcslen(value) + 1;
-    INT size = len * sizeof(TCHAR);
+    size_t len = _tcslen(value) + 1;
+    size_t size = len * sizeof(TCHAR);
     *lppBuf = (LPTSTR)realloc(*lppBuf, size);
     _tcsncpy(*lppBuf, value, len);
 }

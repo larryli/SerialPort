@@ -117,10 +117,12 @@ typedef struct tagNMSERIAL {
 #define SPN_PINCHANGED WM_USER + 0x2B
 #define SPN_ERRORRECEIVED WM_USER + 0x2C
 
-#ifndef HANDLE_WM_DEVICECHANGE
-#define HANDLE_WM_DEVICECHANGE(hwnd, wParam, lParam, fn)                       \
-    (LRESULT)(DWORD)(BOOL)(fn)((hwnd), (UINT)(wParam), (DWORD)(lParam))
+#ifdef HANDLE_WM_DEVICECHANGE
+#undef HANDLE_WM_DEVICECHANGE // Fix lParam to DWORD_PTR on x64 platform
 #endif
+
+#define HANDLE_WM_DEVICECHANGE(hwnd, wParam, lParam, fn)                       \
+    (LRESULT)(DWORD)(BOOL)(fn)((hwnd), (UINT)(wParam), (DWORD_PTR)(lParam))
 
 /****************************************************************************/
 // Macroes
